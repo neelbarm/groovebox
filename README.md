@@ -16,7 +16,7 @@ No samples, no model weights, no network, no runtime dependencies. Every note is
 
 ## Why
 
-I built [MixPilot](https://github.com/neelbarmecha), a local-first AI DJ that reads BPM and key off your local audio files and auto-mixes them. It works well. It also has an obvious problem: it needs music to mix.
+I built MixPilot, a local-first AI DJ that reads BPM and key off your local audio files and auto-mixes them. It works well. It also has an obvious problem: it needs music to mix.
 
 So groovebox is the other half. It writes original tracks **and** a session JSON that a DJ tool can ingest directly — BPM, key, Camelot code, the chord list, the section map, the energy curve. MixPilot never has to analyse the audio, because the generator already knows the answer.
 
@@ -29,7 +29,7 @@ The other reason: music theory is one of the most satisfying things to write as 
 ## 60-second quickstart
 
 ```bash
-git clone <this repo> && cd groovebox
+git clone https://github.com/neelbarm/groovebox && cd groovebox
 npm install          # TypeScript only; the engine itself has zero dependencies
 npm run build
 npx . --seed 42 --style lofi --bars 32 --midi --json -o track.wav
