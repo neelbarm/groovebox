@@ -1,0 +1,482 @@
+{
+  "schema": 1,
+  "generator": "groovebox@0.1.0",
+  "seed": 21,
+  "style": "house",
+  "bpm": 123,
+  "key": "Gm",
+  "keyName": "G dorian",
+  "camelot": "7A",
+  "camelotKey": "Dm",
+  "scale": "dorian",
+  "bars": 32,
+  "beatsPerBar": 4,
+  "durationSec": 65.039,
+  "sections": [
+    {
+      "name": "intro",
+      "startBar": 0,
+      "bars": 4,
+      "startSec": 0,
+      "durationSec": 7.805,
+      "energy": 0.25,
+      "layers": [
+        "drums",
+        "hats",
+        "texture"
+      ]
+    },
+    {
+      "name": "build",
+      "startBar": 4,
+      "bars": 4,
+      "startSec": 7.805,
+      "durationSec": 7.805,
+      "energy": 0.5,
+      "layers": [
+        "bass",
+        "drums",
+        "hats",
+        "pad"
+      ]
+    },
+    {
+      "name": "drop",
+      "startBar": 8,
+      "bars": 8,
+      "startSec": 15.61,
+      "durationSec": 15.61,
+      "energy": 0.95,
+      "layers": [
+        "bass",
+        "drums",
+        "hats",
+        "lead",
+        "pad",
+        "texture"
+      ]
+    },
+    {
+      "name": "breakdown",
+      "startBar": 16,
+      "bars": 4,
+      "startSec": 31.22,
+      "durationSec": 7.805,
+      "energy": 0.35,
+      "layers": [
+        "hats",
+        "pad",
+        "texture"
+      ]
+    },
+    {
+      "name": "drop II",
+      "startBar": 20,
+      "bars": 8,
+      "startSec": 39.024,
+      "durationSec": 15.61,
+      "energy": 1,
+      "layers": [
+        "bass",
+        "drums",
+        "hats",
+        "lead",
+        "pad",
+        "texture"
+      ]
+    },
+    {
+      "name": "outro",
+      "startBar": 28,
+      "bars": 4,
+      "startSec": 54.634,
+      "durationSec": 7.805,
+      "energy": 0.35,
+      "layers": [
+        "drums",
+        "hats",
+        "pad"
+      ]
+    }
+  ],
+  "chords": [
+    {
+      "bar": 0,
+      "bars": 2,
+      "startSec": 0,
+      "degree": "i",
+      "name": "Gm7",
+      "notes": [
+        2,
+        5,
+        7,
+        10
+      ],
+      "voicing": [
+        55,
+        58,
+        62,
+        65
+      ]
+    },
+    {
+      "bar": 2,
+      "bars": 2,
+      "startSec": 3.902,
+      "degree": "VII",
+      "name": "F7",
+      "notes": [
+        0,
+        3,
+        5,
+        9
+      ],
+      "voicing": [
+        57,
+        60,
+        63,
+        65
+      ]
+    },
+    {
+      "bar": 4,
+      "bars": 2,
+      "startSec": 7.805,
+      "degree": "i",
+      "name": "Gm7",
+      "notes": [
+        2,
+        5,
+        7,
+        10
+      ],
+      "voicing": [
+        55,
+        58,
+        62,
+        65
+      ]
+    },
+    {
+      "bar": 6,
+      "bars": 2,
+      "startSec": 11.707,
+      "degree": "VII",
+      "name": "F7",
+      "notes": [
+        0,
+        3,
+        5,
+        9
+      ],
+      "voicing": [
+        57,
+        60,
+        63,
+        65
+      ]
+    },
+    {
+      "bar": 8,
+      "bars": 2,
+      "startSec": 15.61,
+      "degree": "VI",
+      "name": "Ebmaj7",
+      "notes": [
+        2,
+        3,
+        7,
+        10
+      ],
+      "voicing": [
+        55,
+        58,
+        62,
+        63
+      ]
+    },
+    {
+      "bar": 10,
+      "bars": 2,
+      "startSec": 19.512,
+      "degree": "i",
+      "name": "Gm7",
+      "notes": [
+        2,
+        5,
+        7,
+        10
+      ],
+      "voicing": [
+        55,
+        58,
+        62,
+        65
+      ]
+    },
+    {
+      "bar": 12,
+      "bars": 2,
+      "startSec": 23.415,
+      "degree": "iio",
+      "name": "Am7b5",
+      "notes": [
+        0,
+        3,
+        7,
+        9
+      ],
+      "voicing": [
+        55,
+        57,
+        60,
+        63
+      ]
+    },
+    {
+      "bar": 14,
+      "bars": 2,
+      "startSec": 27.317,
+      "degree": "VII",
+      "name": "F7",
+      "notes": [
+        0,
+        3,
+        5,
+        9
+      ],
+      "voicing": [
+        57,
+        60,
+        63,
+        65
+      ]
+    },
+    {
+      "bar": 16,
+      "bars": 2,
+      "startSec": 31.22,
+      "degree": "i",
+      "name": "Gm7",
+      "notes": [
+        2,
+        5,
+        7,
+        10
+      ],
+      "voicing": [
+        55,
+        58,
+        62,
+        65
+      ]
+    },
+    {
+      "bar": 18,
+      "bars": 2,
+      "startSec": 35.122,
+      "degree": "VII",
+      "name": "F7",
+      "notes": [
+        0,
+        3,
+        5,
+        9
+      ],
+      "voicing": [
+        57,
+        60,
+        63,
+        65
+      ]
+    },
+    {
+      "bar": 20,
+      "bars": 2,
+      "startSec": 39.024,
+      "degree": "i",
+      "name": "Gm7",
+      "notes": [
+        2,
+        5,
+        7,
+        10
+      ],
+      "voicing": [
+        55,
+        58,
+        62,
+        65
+      ]
+    },
+    {
+      "bar": 22,
+      "bars": 2,
+      "startSec": 42.927,
+      "degree": "VI",
+      "name": "Ebmaj7",
+      "notes": [
+        2,
+        3,
+        7,
+        10
+      ],
+      "voicing": [
+        55,
+        58,
+        62,
+        63
+      ]
+    },
+    {
+      "bar": 24,
+      "bars": 2,
+      "startSec": 46.829,
+      "degree": "VII",
+      "name": "F7",
+      "notes": [
+        0,
+        3,
+        5,
+        9
+      ],
+      "voicing": [
+        57,
+        60,
+        63,
+        65
+      ]
+    },
+    {
+      "bar": 26,
+      "bars": 2,
+      "startSec": 50.732,
+      "degree": "i",
+      "name": "Gm7",
+      "notes": [
+        2,
+        5,
+        7,
+        10
+      ],
+      "voicing": [
+        55,
+        58,
+        62,
+        65
+      ]
+    },
+    {
+      "bar": 28,
+      "bars": 2,
+      "startSec": 54.634,
+      "degree": "VI",
+      "name": "Ebmaj7",
+      "notes": [
+        2,
+        3,
+        7,
+        10
+      ],
+      "voicing": [
+        55,
+        58,
+        62,
+        63
+      ]
+    },
+    {
+      "bar": 30,
+      "bars": 2,
+      "startSec": 58.537,
+      "degree": "VII",
+      "name": "F7",
+      "notes": [
+        0,
+        3,
+        5,
+        9
+      ],
+      "voicing": [
+        57,
+        60,
+        63,
+        65
+      ]
+    }
+  ],
+  "energyCurve": [
+    0.25,
+    0.29,
+    0.33,
+    0.37,
+    0.5,
+    0.54,
+    0.58,
+    0.62,
+    0.95,
+    0.967,
+    0.984,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0.35,
+    0.39,
+    0.43,
+    0.47,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0.35,
+    0.29,
+    0.23,
+    0.17
+  ],
+  "downbeats": [
+    0,
+    1.951,
+    3.902,
+    5.854,
+    7.805,
+    9.756,
+    11.707,
+    13.659,
+    15.61,
+    17.561,
+    19.512,
+    21.463,
+    23.415,
+    25.366,
+    27.317,
+    29.268,
+    31.22,
+    33.171,
+    35.122,
+    37.073,
+    39.024,
+    40.976,
+    42.927,
+    44.878,
+    46.829,
+    48.78,
+    50.732,
+    52.683,
+    54.634,
+    56.585,
+    58.537,
+    60.488
+  ],
+  "stats": {
+    "peakDb": -1,
+    "rmsDb": -8.692,
+    "sampleRate": 44100,
+    "frames": 2868221
+  }
+}
