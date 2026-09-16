@@ -1,0 +1,38 @@
+{
+  "name": "groovebox",
+  "version": "0.1.0",
+  "description": "Deterministic, dependency-free generative music engine in TypeScript. Seeds in, listenable WAV/MIDI + DJ-ready session JSON out.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Neel Barmecha",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "groovebox": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "web",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": ["generative-music", "synthesizer", "midi", "wav", "dj", "markov", "music-theory", "dsp"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && chmod +x dist/cli.js",
+    "test": "npm run build && node --test test/*.test.js",
+    "demo": "npm run build && node scripts/demo.js",
+    "web": "npm run build && node scripts/serve.js",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}
