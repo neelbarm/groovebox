@@ -10,6 +10,8 @@ No samples, no model weights, no network, no runtime dependencies. Every note is
 
 ![groovebox](docs/screenshot.png)
 
+**Listen without building:** [lofi-7.mp3](examples/lofi-7.mp3) · [house-21.mp3](examples/house-21.mp3) · [ambient-99.mp3](examples/ambient-99.mp3) (rendered by `npm run demo`, session JSON and MIDI sit beside each one).
+
 ---
 
 ## Why
