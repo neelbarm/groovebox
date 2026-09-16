@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en" data-style="lofi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>groovebox</title>
+<meta name="description" content="Seeded generative music, rendered in your browser. No dependencies, no network." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0c0f'/%3E%3Cg fill='%23ffb37a'%3E%3Crect x='7' y='13' width='3' height='6' rx='1.5'/%3E%3Crect x='12.5' y='8' width='3' height='16' rx='1.5'/%3E%3Crect x='18' y='11' width='3' height='10' rx='1.5'/%3E%3Crect x='23.5' y='14' width='3' height='4' rx='1.5'/%3E%3C/g%3E%3C/svg%3E" />
+<style>
+/* ============================================================== tokens === */
+:root {
+  --bg:            #07080a;
+  --bg-2:          #0c0e13;
+  --ink:           #f4f5f7;
+  --ink-2:         rgba(244, 245, 247, 0.62);
+  --ink-3:         rgba(244, 245, 247, 0.38);
+  --hairline:      rgba(255, 255, 255, 0.09);
+  --hairline-soft: rgba(255, 255, 255, 0.055);
+  --glass:         rgba(255, 255, 255, 0.038);
+  --glass-2:       rgba(255, 255, 255, 0.065);
+
+  --accent:        #ffb37a;
+  --accent-2:      #c98bff;
+  --accent-ink:    #14100c;
+
+  --radius-lg: 26px;
+  --radius-md: 16px;
+  --radius-pill: 999px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur: 0.42s;
+
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter",
+          "Helvetica Neue", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Roboto Mono", Menlo, monospace;
+}
+
+html[data-style="lofi"]    { --accent: #ffb37a; --accent-2: #c98bff; --accent-ink: #1b1209; }
+html[data-style="house"]   { --accent: #6fd3ff; --accent-2: #7b8cff; --accent-ink: #061119; }
+html[data-style="ambient"] { --accent: #5fe2c4; --accent-2: #63a8ff; --accent-ink: #051512; }
+html[data-style="dnb"]     { --accent: #ff6b8b; --accent-2: #9b5cff; --accent-ink: #1a0810; }
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* Two slow, offset radial washes that drift with the accent colour. */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: -30vmax;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.55;
+  transition: background 1.2s var(--ease-out);
+}
+body::before {
+  background: radial-gradient(48vmax 42vmax at 18% 6%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 62%);
+  animation: drift-a 26s ease-in-out infinite alternate;
+}
+body::after {
+  background: radial-gradient(44vmax 40vmax at 84% 88%, color-mix(in srgb, var(--accent-2) 22%, transparent), transparent 64%);
+  animation: drift-b 34s ease-in-out infinite alternate;
+}
+@keyframes drift-a { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(3%, 4%, 0) scale(1.12); } }
+@keyframes drift-b { from { transform: translate3d(0,0,0) scale(1.08); } to { transform: translate3d(-4%, -3%, 0) scale(1); } }
+
+/* ================================================================ layout == */
+.page {
+  position: relative;
+  z-index: 1;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: clamp(28px, 6vw, 72px) clamp(16px, 4vw, 32px) 96px;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 3vw, 30px);
+}
+
+/* Staggered entrance. Transform + opacity only. */
+.rise {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+  animation: rise 0.9s var(--ease-out) forwards;
+}
+.rise:nth-of-type(1) { animation-delay: 0.04s; }
+.rise:nth-of-type(2) { animation-delay: 0.12s; }
+.rise:nth-of-type(3) { animation-delay: 0.20s; }
+.rise:nth-of-type(4) { animation-delay: 0.28s; }
+@keyframes rise { to { opacity: 1; transform: translate3d(0, 0, 0); } }
+
+/* ================================================================== hero == */
+.hero { display: flex; flex-direction: column; gap: 14px; }
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 590;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.eyebrow .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent);
+  animation: pulse 2.8s var(--ease-out) infinite;
+  transition: background var(--dur) var(--ease-out);
+}
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+  70%  { box-shadow: 0 0 0 9px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+h1.title {
+  margin: 0;
+  font-size: clamp(42px, 8.6vw, 96px);
+  line-height: 0.94;
+  letter-spacing: -0.045em;
+  font-weight: 700;
+  text-wrap: balance;
+}
+h1.title .sep { color: var(--ink-3); font-weight: 300; padding: 0 0.12em; }
+h1.title .num { font-variant-numeric: tabular-nums; }
+h1.title .accent {
+  background: linear-gradient(104deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  color: var(--ink-2);
+  font-size: 14.5px;
+  font-variant-numeric: tabular-nums;
+}
+.meta .chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 11px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: var(--glass);
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.meta .chip b { font-weight: 620; color: var(--ink); }
+.meta .chip.camelot b { color: var(--accent); }
+
+/* =============================================================== panels === */
+.panel {
+  position: relative;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, var(--glass-2), var(--glass));
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  backdrop-filter: blur(28px) saturate(160%);
+  box-shadow: 0 1px 0 0 rgba(255,255,255,0.05) inset, 0 24px 60px -30px rgba(0,0,0,0.9);
+  overflow: hidden;
+}
+
+/* ============================================================== controls == */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 18px 26px;
+  padding: 20px clamp(16px, 3vw, 24px);
+}
+
+.field { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+.field > label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* Segmented control with a sliding glass thumb. */
+.segmented {
+  position: relative;
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--hairline-soft);
+  border-radius: var(--radius-pill);
+  background: rgba(0,0,0,0.3);
+}
+.segmented .thumb {
+  position: absolute;
+  top: 3px; left: 3px;
+  height: calc(100% - 6px);
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.08));
+  box-shadow: 0 1px 0 rgba(255,255,255,0.18) inset, 0 4px 14px -6px rgba(0,0,0,0.9);
+  transition: transform 0.44s var(--ease-spring), width 0.44s var(--ease-spring);
+  pointer-events: none;
+  will-change: transform, width;
+}
+.segmented button {
+  position: relative;
+  z-index: 1;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 560;
+  letter-spacing: -0.005em;
+  padding: 7px 15px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: color 0.3s var(--ease-out), transform 0.3s var(--ease-spring);
+  white-space: nowrap;
+}
+.segmented button:hover { color: var(--ink); }
+.segmented button[aria-checked="true"] { color: var(--ink); }
+.segmented button:active { transform: scale(0.96); }
+
+/* Seed stepper */
+.seed-box {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--hairline-soft);
+  border-radius: var(--radius-pill);
+  background: rgba(0,0,0,0.3);
+  overflow: hidden;
+}
+.seed-box input {
+  width: 92px;
+  appearance: none;
+  -moz-appearance: textfield;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 580;
+  font-variant-numeric: tabular-nums;
+  padding: 8px 4px 8px 15px;
+  outline: none;
+}
+.seed-box input::-webkit-outer-spin-button,
+.seed-box input::-webkit-inner-spin-button { appearance: none; margin: 0; }
+.icon-btn {
+  appearance: none;
+  border: 0;
+  border-left: 1px solid var(--hairline-soft);
+  background: transparent;
+  color: var(--ink-2);
+  padding: 9px 13px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: color 0.25s var(--ease-out), background 0.25s var(--ease-out), transform 0.3s var(--ease-spring);
+}
+.icon-btn:hover { color: var(--ink); background: rgba(255,255,255,0.06); }
+.icon-btn:active { transform: scale(0.9) rotate(-18deg); }
+.icon-btn svg { width: 16px; height: 16px; display: block; }
+
+/* Pill buttons */
+.pill {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: var(--glass-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 580;
+  letter-spacing: -0.008em;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: transform 0.34s var(--ease-spring), background 0.3s var(--ease-out),
+              border-color 0.3s var(--ease-out), opacity 0.3s var(--ease-out);
+  white-space: nowrap;
+}
+.pill:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.18); }
+.pill:active { transform: scale(0.955); }
+.pill[disabled] { opacity: 0.4; pointer-events: none; }
+.pill.primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  color: var(--accent-ink);
+  font-weight: 650;
+  box-shadow: 0 10px 30px -12px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.pill.primary:hover { filter: brightness(1.07); background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.pill svg { width: 15px; height: 15px; }
+
+:where(button, input, a):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--radius-pill);
+}
+
+/* ============================================================== progress == */
+.progress {
+  position: relative;
+  height: 2px;
+  width: 100%;
+  overflow: hidden;
+  background: var(--hairline-soft);
+  opacity: 0;
+  transition: opacity 0.3s var(--ease-out);
+}
+.progress[data-active="true"] { opacity: 1; }
+.progress .breath {
+  position: absolute;
+  inset: 0;
+  width: 38%;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, transparent, var(--accent), var(--accent-2), transparent);
+  transform: translate3d(-100%, 0, 0);
+  animation: breathe 1.5s var(--ease-out) infinite;
+  will-change: transform, opacity;
+}
+@keyframes breathe {
+  0%   { transform: translate3d(-110%, 0, 0); opacity: 0.35; }
+  50%  { opacity: 1; }
+  100% { transform: translate3d(320%, 0, 0); opacity: 0.35; }
+}
+
+/* ================================================================= stage == */
+.stage { display: flex; flex-direction: column; }
+
+.canvas-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 24 / 7;
+  min-height: 196px;
+  background:
+    radial-gradient(120% 90% at 50% 120%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 70%),
+    linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.42));
+}
+canvas#viz { display: block; width: 100%; height: 100%; }
+
+.empty-state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 14px;
+  letter-spacing: -0.005em;
+  transition: opacity 0.5s var(--ease-out), transform 0.5s var(--ease-out);
+  pointer-events: none;
+  padding: 0 24px;
+}
+.empty-state[data-hidden="true"] { opacity: 0; transform: translate3d(0, -8px, 0); }
+
+/* ================================================================ ribbon == */
+.ribbon {
+  position: relative;
+  display: flex;
+  gap: 4px;
+  padding: 12px 16px 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-top: 1px solid var(--hairline-soft);
+  scroll-behavior: smooth;
+}
+.ribbon::-webkit-scrollbar { display: none; }
+.ribbon .chord {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 5px 11px 8px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 560;
+  letter-spacing: -0.01em;
+  color: var(--ink-3);
+  transition: color 0.3s var(--ease-out), transform 0.4s var(--ease-spring);
+  white-space: nowrap;
+}
+.ribbon .chord[data-current="true"] { color: var(--ink); transform: translate3d(0, -1px, 0); }
+.ribbon .chord .bar-no {
+  font-size: 9.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  margin-right: 5px;
+  opacity: 0.7;
+}
+.ribbon .underline {
+  position: absolute;
+  bottom: 8px; left: 0;
+  height: 2px;
+  width: 1px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transform-origin: left center;
+  transform: translate3d(0,0,0) scaleX(0);
+  transition: transform 0.5s var(--ease-spring), opacity 0.3s var(--ease-out);
+  opacity: 0;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 65%, transparent);
+  will-change: transform;
+}
+
+/* ============================================================= transport == */
+.transport {
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 2.4vw, 20px);
+  padding: 16px clamp(16px, 3vw, 22px) 18px;
+  border-top: 1px solid var(--hairline-soft);
+}
+
+.play {
+  position: relative;
+  flex: 0 0 auto;
+  width: 62px; height: 62px;
+  border-radius: 50%;
+  border: 0;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: var(--accent-ink);
+  background: linear-gradient(140deg, var(--accent), var(--accent-2));
+  box-shadow: 0 14px 34px -14px color-mix(in srgb, var(--accent) 80%, transparent),
+              0 1px 0 rgba(255,255,255,0.28) inset;
+  transition: transform 0.46s var(--ease-spring), filter 0.3s var(--ease-out), opacity 0.3s var(--ease-out);
+  will-change: transform;
+}
+.play:hover { filter: brightness(1.08); transform: scale(1.045); }
+.play:active { transform: scale(0.9); }
+.play[disabled] { opacity: 0.35; pointer-events: none; }
+.play svg { width: 25px; height: 25px; display: block; transition: opacity 0.2s var(--ease-out); }
+.play .ico-pause { display: none; }
+.play[data-playing="true"] .ico-play { display: none; }
+.play[data-playing="true"] .ico-pause { display: block; }
+/* A soft halo that only breathes while audio is running. */
+.play::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  opacity: 0;
+  transition: opacity 0.4s var(--ease-out);
+}
+.play[data-playing="true"]::after { opacity: 1; animation: halo 2.4s var(--ease-out) infinite; }
+@keyframes halo {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.22); opacity: 0; }
+}
+
+.scrub {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.scrub .track {
+  position: relative;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: rgba(255,255,255,0.1);
+  cursor: pointer;
+}
+.scrub .fill {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transform-origin: left center;
+  transform: scaleX(0);
+  will-change: transform;
+}
+.scrub .head {
+  position: absolute;
+  top: 50%; left: 0;
+  width: 11px; height: 11px;
+  margin: -5.5px 0 0 -5.5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.6);
+  transform: translate3d(0,0,0) scale(0.7);
+  opacity: 0;
+  transition: opacity 0.25s var(--ease-out), scale 0.25s var(--ease-spring);
+  will-change: transform;
+}
+.scrub:hover .head, .scrub .track:focus-visible + .head { opacity: 1; scale: 1; }
+.scrub .labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+  letter-spacing: 0.01em;
+}
+.scrub .labels .now { color: var(--ink-2); }
+.scrub .labels .section {
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 10.5px;
+}
+
+.transport .side { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+
+/* =============================================================== footer === */
+footer.note {
+  color: var(--ink-3);
+  font-size: 12.5px;
+  line-height: 1.7;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  align-items: center;
+}
+footer.note code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.055);
+  border: 1px solid var(--hairline-soft);
+  color: var(--ink-2);
+}
+footer.note a { color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--hairline); }
+footer.note a:hover { color: var(--ink); }
+
+.error {
+  margin: 0;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 120, 120, 0.3);
+  background: rgba(255, 90, 90, 0.08);
+  color: #ffc9c9;
+  font-size: 13.5px;
+  display: none;
+}
+.error[data-visible="true"] { display: block; }
+
+@media (max-width: 720px) {
+  .controls { gap: 14px 18px; }
+  .field.grow { width: 100%; }
+  .segmented { width: 100%; justify-content: space-between; }
+  .segmented button { flex: 1 1 0; padding: 7px 8px; }
+  .transport { flex-wrap: wrap; }
+  .transport .side { width: 100%; justify-content: flex-end; }
+  .play { width: 56px; height: 56px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .rise { opacity: 1; transform: none; }
+}
+</style>
+</head>
+<body>
+<main class="page">
+
+  <header class="hero rise">
+    <div class="eyebrow"><span class="dot"></span> groovebox &middot; seeded generative engine</div>
+    <h1 class="title" id="title">
+      <span class="accent" id="t-style">Lo-fi</span><span class="sep">/</span><span id="t-key">Dm</span><span class="sep">/</span><span class="num" id="t-bpm">80</span><span class="sep" style="padding-left:.06em">BPM</span>
+    </h1>
+    <div class="meta" id="meta">
+      <span class="chip camelot">Camelot <b id="m-camelot">8A</b></span>
+      <span class="chip">Bars <b id="m-bars">32</b></span>
+      <span class="chip">Length <b id="m-length">0:00</b></span>
+      <span class="chip">Peak <b id="m-peak">--</b></span>
+      <span class="chip">Seed <b id="m-seed">7</b></span>
+    </div>
+  </header>
+
+  <p class="error" id="error" role="alert"></p>
+
+  <section class="panel controls rise" aria-label="Generator controls">
+    <div class="field grow">
+      <label id="lbl-style">Style</label>
+      <div class="segmented" role="radiogroup" aria-labelledby="lbl-style" id="style-seg">
+        <span class="thumb" id="style-thumb"></span>
+        <button type="button" role="radio" data-value="lofi" aria-checked="true">Lo-fi</button>
+        <button type="button" role="radio" data-value="house" aria-checked="false">House</button>
+        <button type="button" role="radio" data-value="ambient" aria-checked="false">Ambient</button>
+        <button type="button" role="radio" data-value="dnb" aria-checked="false">D&amp;B</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label id="lbl-bars">Bars</label>
+      <div class="segmented" role="radiogroup" aria-labelledby="lbl-bars" id="bars-seg">
+        <span class="thumb" id="bars-thumb"></span>
+        <button type="button" role="radio" data-value="16" aria-checked="false">16</button>
+        <button type="button" role="radio" data-value="32" aria-checked="true">32</button>
+        <button type="button" role="radio" data-value="48" aria-checked="false">48</button>
+        <button type="button" role="radio" data-value="64" aria-checked="false">64</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="seed">Seed</label>
+      <div class="seed-box">
+        <input id="seed" type="number" min="0" max="999999" step="1" value="7" inputmode="numeric" aria-label="Seed" />
+        <button class="icon-btn" id="shuffle" type="button" title="Random seed" aria-label="Random seed">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.3" fill="currentColor" stroke="none"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>&nbsp;</label>
+      <button class="pill primary" id="generate" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4M13 3l2.5 6.5L22 12l-6.5 2.5L13 21l-2.5-6.5L4 12l6.5-2.5L13 3z"/></svg>
+        Generate
+      </button>
+    </div>
+  </section>
+
+  <section class="panel stage rise" aria-label="Player">
+    <div class="progress" id="progress" data-active="false"><span class="breath"></span></div>
+
+    <div class="canvas-wrap">
+      <canvas id="viz"></canvas>
+      <div class="empty-state" id="empty">
+        <strong style="color:var(--ink-2);font-weight:590;font-size:15px;letter-spacing:-0.01em">Nothing rendered yet</strong>
+        <span>Pick a style and a seed, then hit Generate.<br>Everything is synthesised locally &mdash; no network, no samples.</span>
+      </div>
+    </div>
+
+    <div class="ribbon" id="ribbon" aria-label="Chord progression">
+      <span class="underline" id="underline"></span>
+    </div>
+
+    <div class="transport">
+      <button class="play" id="play" type="button" disabled aria-label="Play" data-playing="false">
+        <svg class="ico-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.2c0-.9 1-1.5 1.8-1L19 11c.7.4.7 1.5 0 2l-9.2 6.8c-.8.5-1.8-.1-1.8-1V5.2z"/></svg>
+        <svg class="ico-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1.6"/><rect x="13.5" y="5" width="4" height="14" rx="1.6"/></svg>
+      </button>
+
+      <div class="scrub" id="scrub">
+        <div class="track" id="track" role="slider" tabindex="0" aria-label="Seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <span class="fill" id="fill"></span>
+          <span class="head" id="head"></span>
+        </div>
+        <div class="labels">
+          <span class="now"><span id="t-now">0:00</span> <span style="color:var(--ink-3)">/ <span id="t-total">0:00</span></span></span>
+          <span class="section" id="t-section">&mdash;</span>
+        </div>
+      </div>
+
+      <div class="side">
+        <button class="pill" id="download" type="button" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg>
+          WAV
+        </button>
+        <button class="pill" id="download-json" type="button" disabled title="Session JSON for a DJ tool">JSON</button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="note rise">
+    <span>Same seed &rarr; same track, byte for byte.</span>
+    <span><code>npx groovebox --seed 42 --style lofi --bars 32 -o track.wav</code></span>
+    <span>Session JSON carries BPM, key, Camelot code, chords and the energy curve.</span>
+  </footer>
+</main>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
