@@ -62,10 +62,37 @@ let freqData = null;
 /* --------------------------------------------------------------- worker -- */
 
 let worker = null;
+let workerBroken = false;
+const pendingWorkerRejects = new Set();
+
 try {
   worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
 } catch {
   worker = null; // falls back to main-thread generation below
+}
+
+/**
+ * A module Worker that cannot load (no module-worker support, a 404, an import
+ * error) reports it with an async `error` event, which can fire long before any
+ * generation starts. Without a listener that lives as long as the worker does,
+ * the first postMessage would never be answered and the page would hang with
+ * the Generate button disabled forever. Instead: retire the worker so every
+ * generation -- this one included -- falls back to the main thread.
+ */
+function breakWorker(message) {
+  workerBroken = true;
+  const error = new Error(message || 'worker failed');
+  for (const reject of pendingWorkerRejects) reject(error);
+  pendingWorkerRejects.clear();
+  if (worker) {
+    try { worker.terminate(); } catch { /* already gone */ }
+  }
+  worker = null;
+}
+
+if (worker) {
+  worker.addEventListener('error', (event) => breakWorker(event.message || 'worker failed to load'));
+  worker.addEventListener('messageerror', () => breakWorker('worker sent an unreadable message'));
 }
 
 /* --------------------------------------------------------------- helpers - */
@@ -159,6 +186,10 @@ async function runGenerate() {
   clearError();
   stopPlayback();
   el.generate.disabled = true;
+  // The old track is about to be replaced, so the transport is not usable
+  // until the new one lands -- otherwise play would start audio that no
+  // longer matches the waveform on screen.
+  el.play.disabled = true;
   el.progress.dataset.active = 'true';
 
   const seedValue = Number(el.seed.value);
@@ -167,34 +198,47 @@ async function runGenerate() {
   const options = { seed: state.seed, style: state.style, bars: state.bars };
 
   try {
-    const payload = worker ? await generateInWorker(options) : await generateOnMainThread(options);
+    let payload;
+    if (worker && !workerBroken) {
+      try {
+        payload = await generateInWorker(options);
+      } catch (error) {
+        if (!workerBroken) throw error; // a genuine failure inside the engine
+        payload = await generateOnMainThread(options); // the worker died: carry on here
+      }
+    } else {
+      payload = await generateOnMainThread(options);
+    }
     adoptResult(payload);
   } catch (error) {
     showError(`Generation failed: ${error.message || error}`);
   } finally {
     state.busy = false;
     el.generate.disabled = false;
+    el.play.disabled = state.channels === null;
     el.progress.dataset.active = 'false';
   }
 }
 
 function generateInWorker(options) {
+  const target = worker;
   return new Promise((resolve, reject) => {
     const id = ++state.requestId;
+    const settle = (fn, value) => {
+      target.removeEventListener('message', onMessage);
+      pendingWorkerRejects.delete(reject);
+      fn(value);
+    };
     const onMessage = (event) => {
       const data = event.data;
       if (data.id !== id) return;
-      if (data.type === 'done') {
-        worker.removeEventListener('message', onMessage);
-        resolve(data);
-      } else if (data.type === 'error') {
-        worker.removeEventListener('message', onMessage);
-        reject(new Error(data.message));
-      }
+      if (data.type === 'done') settle(resolve, data);
+      else if (data.type === 'error') settle(reject, new Error(data.message));
     };
-    worker.addEventListener('message', onMessage);
-    worker.addEventListener('error', (e) => reject(new Error(e.message || 'worker error')), { once: true });
-    worker.postMessage({ id, options });
+    // breakWorker() rejects this if the worker dies while we are waiting.
+    pendingWorkerRejects.add(reject);
+    target.addEventListener('message', onMessage);
+    target.postMessage({ id, options });
   });
 }
 
@@ -213,6 +257,8 @@ async function generateOnMainThread(options) {
 }
 
 function adoptResult(payload) {
+  // Anything still sounding belongs to the track we are replacing.
+  stopPlayback();
   // The AudioContext is deliberately NOT created here: browsers want a user
   // gesture first, and we do not need one until the play button is pressed.
   state.channels = { left: payload.left, right: payload.right, sampleRate: payload.sampleRate };
