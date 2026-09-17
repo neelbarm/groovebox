@@ -311,6 +311,54 @@ test('no sample exceeds 1.0 and the peak lands between -6 and -0.1 dBFS', () => 
   }
 });
 
+test('a seed sweep never leaks a non-finite sample, a clip, or a broken file', () => {
+  // One render per (seed, style); every invariant that has to hold for *all*
+  // output is checked on it. A single NaN anywhere in the chain (a filter
+  // blowing up, a divide by zero in an envelope) silently becomes a zero
+  // sample in the WAV, so it has to be caught here rather than by ear.
+  for (let seed = 0; seed < 20; seed++) {
+    for (const style of STYLE_NAMES) {
+      const where = `seed ${seed} / ${style}`;
+      const result = generate({ seed, style, bars: 8, sampleRate: 22050 });
+      const { left, right } = result.audio;
+
+      for (let i = 0; i < left.length; i++) {
+        const l = left[i];
+        const r = right[i];
+        if (!Number.isFinite(l) || !Number.isFinite(r)) {
+          assert.fail(`${where}: non-finite sample at frame ${i} (${l}, ${r})`);
+        }
+        if (Math.abs(l) > 1 || Math.abs(r) > 1) {
+          assert.fail(`${where}: sample ${i} exceeds full scale (${l}, ${r})`);
+        }
+      }
+
+      for (const [name, value] of Object.entries(result.session.stats)) {
+        assert.ok(Number.isFinite(value), `${where}: stats.${name} is ${value}`);
+      }
+      assert.ok(!JSON.stringify(result.session).includes('null'), `${where}: session JSON has a null`);
+
+      const wav = toWav(result);
+      const info = readWavInfo(wav);
+      assert.equal(info.dataBytes % 2, 0, `${where}: odd WAV data chunk`);
+      assert.equal(info.dataBytes, wav.length - WAV_HEADER_BYTES, `${where}: data chunk vs file size`);
+      assert.equal(info.riffSize, wav.length - 8, `${where}: RIFF size vs file size`);
+      assert.equal(info.frames, left.length, `${where}: frame count`);
+
+      const midi = readMidi(toMidi(result));
+      assert.equal(midi.tempoBpm, result.bpm, `${where}: MIDI tempo`);
+      for (const track of midi.tracks) {
+        assert.equal(track.danglingNoteOns, 0, `${where}: ${track.name} left a note hanging`);
+        for (const note of track.notes) {
+          assert.ok(note.durationTicks > 0, `${where}: ${track.name} has a zero-length note`);
+          assert.ok(note.startTick >= 0, `${where}: ${track.name} has a negative start tick`);
+          assert.ok(note.velocity >= 1 && note.velocity <= 127, `${where}: ${track.name} velocity ${note.velocity}`);
+        }
+      }
+    }
+  }
+});
+
 test('the track ends in silence (the fade actually runs)', () => {
   const result = generate({ seed: 4, style: 'lofi', bars: 8, sampleRate: 22050 });
   const { left, right } = result.audio;
