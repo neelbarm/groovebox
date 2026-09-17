@@ -69,6 +69,15 @@ if (!existsSync(join(root, 'dist', 'index.js'))) {
   process.exit(1);
 }
 
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    process.stderr.write(`Port ${port} is already in use. Run \`PORT=4174 npm run web\` to pick another.\n`);
+  } else {
+    process.stderr.write(`Server error: ${err.message}\n`);
+  }
+  process.exit(1);
+});
+
 server.listen(port, () => {
   process.stdout.write(`\n  groovebox web player  ->  http://localhost:${port}/\n`);
   process.stdout.write('  Ctrl+C to stop.\n\n');
