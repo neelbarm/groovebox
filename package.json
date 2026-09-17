@@ -5,6 +5,12 @@
   "type": "module",
   "license": "MIT",
   "author": "Neel Barmecha",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neelbarm/groovebox.git"
+  },
+  "homepage": "https://github.com/neelbarm/groovebox#readme",
+  "bugs": "https://github.com/neelbarm/groovebox/issues",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
