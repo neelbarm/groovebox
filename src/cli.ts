@@ -196,18 +196,32 @@ function main(): void {
   if (interactive) process.stderr.write(`\r${' '.repeat(60)}\r`);
 
   const outPath = resolve(process.cwd(), args.out);
-  mkdirSync(dirname(outPath), { recursive: true });
-  writeFileSync(outPath, toWav(result));
+  // A bad -o (a directory, a read-only path) is a user error, not a crash:
+  // report it the way every other bad argument is reported.
+  const write = (path: string, data: Uint8Array | string): void => {
+    try {
+      writeFileSync(path, data);
+    } catch (err) {
+      fail(`cannot write ${path}: ${(err as NodeJS.ErrnoException).message}`);
+    }
+  };
+
+  try {
+    mkdirSync(dirname(outPath), { recursive: true });
+  } catch (err) {
+    fail(`cannot create ${dirname(outPath)}: ${(err as NodeJS.ErrnoException).message}`);
+  }
+  write(outPath, toWav(result));
 
   const written: string[] = [outPath];
   if (args.midi) {
     const midPath = outPath.replace(/\.wav$/i, '') + '.mid';
-    writeFileSync(midPath, toMidi(result));
+    write(midPath, toMidi(result));
     written.push(midPath);
   }
   if (args.json) {
     const jsonPath = outPath.replace(/\.wav$/i, '') + '.json';
-    writeFileSync(jsonPath, toSessionJson(result));
+    write(jsonPath, toSessionJson(result));
     written.push(jsonPath);
   }
 
