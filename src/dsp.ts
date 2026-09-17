@@ -239,7 +239,7 @@ class Allpass {
 }
 
 /**
- * Schroeder/Freeverb-style reverb: four parallel damped combs feeding two
+ * Schroeder/Freeverb-style reverb: six parallel damped combs feeding three
  * series allpasses, per channel, with the right channel's delays offset so the
  * tail is decorrelated and genuinely stereo.
  */

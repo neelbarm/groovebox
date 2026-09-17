@@ -55,7 +55,7 @@ npm test             # determinism, theory, WAV/MIDI format, level checks
 │ style   │ seed │ key    │ camelot │ bpm │ bars │ length │     peak │     rms │
 ├─────────┼──────┼────────┼─────────┼─────┼──────┼────────┼──────────┼─────────┤
 │ lofi    │    7 │ Dm ≈Am │ 8A      │  80 │   20 │   1:03 │ -1.00 dB │ -9.6 dB │
-│ house   │   21 │ Gm ≈Dm │ 7A      │ 123 │   32 │   1:05 │ -1.00 dB │ -8.5 dB │
+│ house   │   21 │ Gm ≈Dm │ 7A      │ 123 │   32 │   1:05 │ -1.00 dB │ -8.7 dB │
 │ ambient │   99 │ C      │ 8B      │  72 │   20 │   1:12 │ -1.00 dB │ -7.6 dB │
 └─────────┴──────┴────────┴─────────┴─────┴──────┴────────┴──────────┴─────────┘
 ```
@@ -94,7 +94,7 @@ Drums are 16th-step patterns per style, then run through swing (off-eighths push
 
 ### 5. Structure (`src/structure.ts`)
 
-A proportional template per style — intro / A / B / A' / break / outro for lo-fi, build / drop / breakdown / drop II for house — scaled to whatever bar count you asked for and snapped to 4-bar multiples so fills always land on a phrase boundary. Each section declares which layers are playing, which is how instruments enter and leave. The per-bar energy curve falls out of the same data.
+A proportional template per style — intro / A / B / A' / break / outro for lo-fi, build / drop / breakdown / drop II for house — scaled to whatever bar count you asked for and snapped to a 4-bar grid (2 bars under 24, 1 bar under 12, and clipped so the sections never claim more bars than the track has) so fills always land on a phrase boundary. Each section declares which layers are playing, which is how instruments enter and leave. The per-bar energy curve falls out of the same data.
 
 ### 6. Synthesis (`src/synth.ts`, `src/dsp.ts`)
 
@@ -102,8 +102,8 @@ All of it is arithmetic on `Float32Array`s:
 
 - **polyBLEP oscillators** — sine, triangle, square, saw, noise. Naive saws alias into a metallic ring on high notes; polyBLEP applies a two-sample correction around each discontinuity and most of it goes away.
 - **Resonant biquad filter** — the RBJ cookbook low-pass/high-pass/band-pass, with coefficients recomputed every 32 samples so an LFO can sweep the cutoff cheaply.
-- **Schroeder reverb** — four to six parallel damped comb filters into three series allpasses, per channel, with the right channel's delay lengths offset so the tail is genuinely stereo.
-- **Stereo delay** — cross-fed between channels for a ping-pong tail, set to a dotted eighth.
+- **Schroeder reverb** — six parallel damped comb filters into three series allpasses, per channel, with the right channel's delay lengths offset so the tail is genuinely stereo.
+- **Stereo delay** — cross-fed between channels for a ping-pong tail, set to a dotted eighth (a dotted quarter for ambient).
 - **Drum synthesis** — 808-style kick (a sine with a 35 ms pitch envelope from 115 Hz to 44 Hz, plus a click transient), snare (band-passed noise plus two detuned tones), claps (four noise bursts a few milliseconds apart), hats and ride (filtered noise with different decays).
 - **Sidechain ducking** — a gain envelope built from the kick times, with a fast attack and a curved release, multiplied into the pad and bass buses. The classic pump, without a compressor.
 - **Vinyl bed** — band-passed hiss plus Poisson-spaced crackle pops, rolled off above 7 kHz. One cheap layer that does most of the work of making a track read as "lo-fi".
@@ -145,11 +145,11 @@ Every track can be written with a `--json` sidecar. This is the interface:
   ],
   "chords": [
     { "bar": 0, "bars": 1, "startSec": 0, "degree": "iv",
-      "name": "Gm9", "notes": [7, 10, 2, 5, 9], "voicing": [55, 58, 62, 65, 69] }
+      "name": "Gm9", "notes": [2, 5, 7, 9, 10], "voicing": [55, 57, 58, 62, 65] }
   ],
-  "energyCurve": [0.2, 0.23, 0.55, "..."],   // one value per bar, 0..1
+  "energyCurve": [0.2, 0.24, 0.28, "..."],   // one value per bar, 0..1
   "downbeats": [0, 3, 6, "..."],             // the beat grid, in seconds
-  "stats": { "peakDb": -1, "rmsDb": -9.6, "sampleRate": 44100, "frames": 4348800 }
+  "stats": { "peakDb": -1, "rmsDb": -9.776, "sampleRate": 44100, "frames": 4348260 }
 }
 ```
 
@@ -194,7 +194,7 @@ Style defaults: lo-fi 70–90 BPM, house 120–126, ambient 62–76, drum & bass
 import { generate, toWav, toMidi, toSessionJson } from 'groovebox';
 
 const track = generate({ seed: 42, style: 'lofi', bars: 32 });
-track.session.camelot;   // "8A"
+track.session.camelot;   // "6A"
 track.audio.left;        // Float32Array, 44.1 kHz
 toWav(track);            // Uint8Array
 ```
@@ -212,7 +212,7 @@ The same module runs unmodified in Node and in the browser.
 | `npm run demo` | Renders the three example tracks into `examples/` |
 | `npm run web` | Static server for the browser player |
 
-`examples/*.wav` and `*.mp3` are gitignored — the MIDI and JSON sidecars are committed, because they are small and worth reading. Run `npm run demo` to regenerate the audio.
+`examples/*.wav` is gitignored — the MP3 previews, MIDI and JSON sidecars are committed, because they are small and worth reading. Run `npm run demo` to regenerate the WAVs (and the MP3s, if ffmpeg is on your PATH).
 
 ---
 
