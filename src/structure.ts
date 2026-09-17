@@ -100,8 +100,12 @@ export function buildStructure(style: StyleName, bars: number, rng: Rng): Sectio
   const out: Section[] = [];
   let cursor = 0;
   for (let i = 0; i < template.length; i++) {
+    if (cursor >= bars) break;
     const t = template[i]!;
-    const len = alloc[i]!;
+    // Every section has a minimum length, so a very short song cannot fit the
+    // whole template. Clip to the bars actually asked for: sections that run
+    // past the end of the audio would make the session JSON lie to a DJ tool.
+    const len = Math.min(alloc[i]!, bars - cursor);
     if (len <= 0) continue;
     out.push({
       name: t.name,
@@ -109,10 +113,12 @@ export function buildStructure(style: StyleName, bars: number, rng: Rng): Sectio
       bars: len,
       layers: new Set(t.layers),
       energy: t.energy,
-      isOutro: i === template.length - 1,
+      isOutro: false,
     });
     cursor += len;
   }
+  // Whatever ends up last is the section that fades.
+  if (out.length > 0) out[out.length - 1]!.isOutro = true;
   return out;
 }
 

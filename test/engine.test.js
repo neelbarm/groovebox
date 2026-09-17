@@ -222,6 +222,51 @@ test('structure covers exactly the requested bars with no gaps', () => {
   }
 });
 
+test('structure fits inside the shortest songs the CLI allows', () => {
+  // `--bars 4` is legal, but every template has more sections than that, and
+  // each section has a minimum length: the allocation must be clipped, never
+  // allowed to describe more bars than the track actually contains.
+  for (const style of STYLE_NAMES) {
+    for (let bars = 4; bars <= 12; bars++) {
+      const sections = buildStructure(style, bars, streamFor(9, `short-${bars}`));
+      assert.ok(sections.length > 0, `${style}/${bars}: no sections`);
+      let cursor = 0;
+      for (const section of sections) {
+        assert.equal(section.startBar, cursor, `${style}/${bars}: gap before "${section.name}"`);
+        assert.ok(section.bars > 0, `${style}/${bars}: "${section.name}" is empty`);
+        cursor += section.bars;
+      }
+      assert.equal(cursor, bars, `${style}/${bars}: sections span ${cursor} bars, not ${bars}`);
+      assert.equal(sections.filter((s) => s.isOutro).length, 1, `${style}/${bars}: exactly one section fades`);
+      assert.ok(sections[sections.length - 1].isOutro, `${style}/${bars}: the fade must be the last section`);
+      assert.equal(energyCurve(sections, bars).length, bars);
+    }
+  }
+});
+
+test('a four-bar track still reports a truthful session', () => {
+  for (const style of STYLE_NAMES) {
+    const session = generate({ seed: 6, style, bars: 4, sampleRate: 22050 }).session;
+    assert.doesNotThrow(() => validateSession(JSON.parse(JSON.stringify(session))));
+    let cursor = 0;
+    for (const section of session.sections) {
+      assert.equal(section.startBar, cursor, `${style}: section gap at bar ${cursor}`);
+      cursor += section.bars;
+    }
+    assert.equal(cursor, session.bars, `${style}: sections claim ${cursor} bars of a ${session.bars}-bar track`);
+    const barSeconds = (60 / session.bpm) * 4;
+    const last = session.sections[session.sections.length - 1];
+    assert.ok(
+      last.startSec + last.durationSec <= session.durationSec + 1e-6,
+      `${style}: the last section ends after the audio does`,
+    );
+    for (const chord of session.chords) {
+      assert.ok(chord.bar < session.bars, `${style}: chord at bar ${chord.bar} is past the end`);
+      assert.ok(chord.startSec < session.bars * barSeconds + 1e-6);
+    }
+  }
+});
+
 /* =================================================================== wav == */
 
 test('WAV header fields are correct and the data length matches', () => {
